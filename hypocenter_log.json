@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "description": "顕著な地震の震源要素更新のお知らせ（VXSE61）記録ファイル",
+  "events": [
+    {
+      "arrivalTime": "2026/05/20 11:46",
+      "reportDateTime": "2026/05/20 13:30",
+      "hypocenter": {
+        "name": "沖縄本島近海",
+        "latitude": 27.4,
+        "longitude": 128.6,
+        "depth": 50,
+        "magnitude": 5.9
+      }
+    },
+    {
+      "arrivalTime": "2026/05/15 20:22",
+      "reportDateTime": "2026/05/20 13:30",
+      "hypocenter": {
+        "name": "宮城県沖",
+        "latitude": 38.9,
+        "longitude": 142.1,
+        "depth": 46,
+        "magnitude": 6.4
+      }
+    }
+  ]
+}
