@@ -3300,7 +3300,7 @@ async function verifyAdminKeyInput(featureLabel) {
   try {
     adminKey = await loadAdminKey();
   } catch (err) {
-    setAdminStatus('.env から開発者キーを読み込めません', '#f64');
+    setAdminStatus('開発者キーを読み込めません', '#f64');
     console.warn(err);
     return false;
   }
