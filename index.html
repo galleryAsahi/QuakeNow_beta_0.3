@@ -765,6 +765,11 @@
        - オーバーレイ凡例・情報パネルを縮小・再配置
      機能・UIは一切損なわず、レイアウトのみ再構成しています。
   ===================================================================== */
+  /* ===== ボトムシート ドラッグハンドル ===== */
+  #bs-handle-wrap {
+    display: none; /* デスクトップでは非表示 */
+  }
+
   @media (max-width: 768px) {
     html, body {
       overflow: hidden;
@@ -772,75 +777,111 @@
     body {
       flex-direction: column;
       height: 100vh;
-      height: 100dvh; /* iOS Safari の動的ビューポート対応 */
+      height: 100dvh;
     }
 
-    /* ----- 地図エリア：画面上部に配置 ----- */
+    /* ----- 地図エリア：常に全画面背景 ----- */
     #map-container {
-      order: 1;
+      position: fixed !important;
+      inset: 0;
       width: 100%;
-      height: 45vh;
-      height: 45dvh;
+      height: 100%;
       flex: none;
-      min-height: 240px;
-      border-bottom: 1px solid #333;
+      border-bottom: none;
+      z-index: 0;
     }
 
-    /* ----- サイドバー：地図の下、タブバーの上 ----- */
+    /* ----- サイドバー：ボトムシートとして固定 ----- */
     #sidebar {
-      order: 2;
-      width: 100%;
-      min-width: 0;
-      height: auto;
-      flex: 1 1 auto;
-      min-height: 0;
-      flex-direction: column; /* タブバーを縦から横へ：別途下に固定 */
-      border-right: none;
-      border-top: 1px solid #333;
-      overflow: hidden;
-    }
-
-    /* ----- タブバー：画面最下部に水平固定（ボトムナビ） ----- */
-    #tab-bar {
-      order: 3;
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
       width: 100%;
       min-width: 0;
-      height: 56px;
+      /* --bs-y で上端位置を制御（JSで設定） */
+      top: var(--bs-y, 55%);
+      height: auto;
+      flex-direction: column;
+      border-right: none;
+      border-top: none;
+      border-radius: 16px 16px 0 0;
+      background: #1a1a1a;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
+      z-index: 200;
+      overflow: hidden;
+      transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: top;
+    }
+    /* ドラッグ中はtransitionをOFF */
+    #sidebar.bs-dragging {
+      transition: none;
+    }
+
+    /* ----- ドラッグハンドル ----- */
+    #bs-handle-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 10px 0 4px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      flex-shrink: 0;
+      background: #1a1a1a;
+      border-radius: 16px 16px 0 0;
+      position: relative;
+    }
+    #bs-handle-wrap::after {
+      content: "";
+      display: block;
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: #444;
+    }
+
+
+    /* ----- タブバー：ボトムシート内に横並び ----- */
+    #tab-bar {
+      order: 2;
+      position: static;
+      width: 100%;
+      min-width: 0;
+      height: auto;
       flex-direction: row;
       justify-content: space-around;
       align-items: center;
-      padding: 4px 6px;
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
       gap: 4px;
-      background: #0d0d0d;
+      background: #111;
       border-top: 1px solid #2a2a2a;
       border-right: none;
-      z-index: 1500;
-      box-shadow: 0 -2px 12px rgba(0,0,0,0.6);
-      padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
-      height: calc(56px + env(safe-area-inset-bottom, 0px));
+      z-index: auto;
+      box-shadow: none;
+      flex-shrink: 0;
     }
     .mode-btn {
       width: 44px;
       height: 44px;
     }
 
-    /* ----- サイドバー本体：タブバーの分の余白を下に確保 ----- */
+    /* ----- サイドバー本体 ----- */
     #sidebar-inner {
+      order: 1;
       flex: 1 1 auto;
       min-height: 0;
-      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      overflow: hidden;
+      padding-bottom: 0;
     }
 
     #sidebar-header {
-      padding: 10px 12px;
+      padding: 8px 12px;
       font-size: 13px;
     }
 
-    /* ----- オーバーレイ：情報パネル（最大震度カード） ----- */
+    /* ----- オーバーレイ：情報パネル（ボトムシートに被らないよう上部） ----- */
     #info-panel {
       top: 6px;
       right: 6px;
@@ -855,15 +896,16 @@
     .info-scale-box .s-sub { font-size: 14px; }
     .info-epicenter { font-size: 13px; }
 
-    /* ----- 凡例：右下を小型化（ボトムナビと被らないよう少し上へ） ----- */
+    /* ----- 凡例（ボトムシートに被らないよう、シートの上に出す） ----- */
     #scale-legend,
     #tsunami-map-legend {
-      bottom: 6px;
+      bottom: calc(var(--bs-legend-bottom, 47%) + 8px);
       right: 6px;
       padding: 4px 6px;
       font-size: 9px;
-      max-height: 38vh;
+      max-height: 30vh;
       overflow-y: auto;
+      transition: bottom 0.32s cubic-bezier(0.4, 0, 0.2, 1);
     }
     #scale-legend .legend-box,
     #tsunami-map-legend .legend-box {
@@ -887,7 +929,6 @@
 
   /* ----- さらに小さい画面（≤380px）の微調整 ----- */
   @media (max-width: 380px) {
-    #map-container { height: 42vh; height: 42dvh; }
     .mode-btn { width: 40px; height: 40px; }
     .info-scale-box { width: 64px; min-width: 64px; }
     .info-scale-box .s-num { font-size: 26px; }
@@ -897,6 +938,7 @@
   @media (max-width: 920px) and (orientation: landscape) and (max-height: 500px) {
     body { flex-direction: row; }
     #map-container {
+      position: static !important;
       order: 2;
       width: auto;
       height: 100%;
@@ -905,6 +947,8 @@
       border-left: 1px solid #333;
     }
     #sidebar {
+      position: static !important;
+      top: auto !important;
       order: 1;
       width: 280px;
       min-width: 240px;
@@ -912,7 +956,11 @@
       flex: none;
       flex-direction: row;
       border-top: none;
+      border-radius: 0;
+      box-shadow: none;
+      transition: none;
     }
+    #bs-handle-wrap { display: none !important; }
     #tab-bar {
       position: static;
       width: 48px;
@@ -922,15 +970,22 @@
       justify-content: flex-start;
       padding: 8px 0;
       box-shadow: none;
-      padding-bottom: 8px;
     }
-    #sidebar-inner { padding-bottom: 0; }
+    #sidebar-inner { padding-bottom: 0; order: 2; }
+    #scale-legend, #tsunami-map-legend {
+      bottom: 6px !important;
+      transition: none;
+    }
   }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
+  <!-- ボトムシート ドラッグハンドル（モバイル用） -->
+  <div id="bs-handle-wrap">
+
+  </div>
   <!-- タブ切り替えバー（左縦帯） -->
   <div id="tab-bar">
     <button class="mode-btn active" id="btn-info" title="地震情報" onclick="setMode('info')">
@@ -1139,9 +1194,9 @@
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
             <div id="kyoshin-visible-toggle"
               onclick="onKyoshinVisibleToggle()"
-              style="position:relative;width:36px;height:20px;border-radius:10px;background:#4af;border:1px solid #3af;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
+              style="position:relative;width:36px;height:20px;border-radius:10px;background:#333;border:1px solid #444;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
               <div id="kyoshin-visible-thumb"
-                style="position:absolute;top:2px;left:18px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left 0.2s,background 0.2s;"></div>
+                style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:left 0.2s,background 0.2s;"></div>
             </div>
             <span style="font-size:11px;color:#ccc;">強震モニタ描画</span>
           </label>
@@ -1151,14 +1206,14 @@
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
             <div id="dsten-visible-toggle"
               onclick="onDstenVisibleToggle()"
-              style="position:relative;width:36px;height:20px;border-radius:10px;background:#4af;border:1px solid #3af;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
+              style="position:relative;width:36px;height:20px;border-radius:10px;background:#333;border:1px solid #444;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
               <div id="dsten-visible-thumb"
-                style="position:absolute;top:2px;left:18px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left 0.2s,background 0.2s;"></div>
+                style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:left 0.2s,background 0.2s;"></div>
             </div>
             <span style="font-size:11px;color:#ccc;">海底地震計描画</span>
           </label>
         </div>
-        <!-- 震度換算トグル（管理者キーが必要）→ ONにすると「EEWのみ」トグルが出現 -->
+        <!-- 震度換算トグル（開発者キーが必要）→ ONにすると「EEWのみ」トグルが出現 -->
         <div style="margin-top:8px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
             <div id="kyoshin-shindo-toggle"
@@ -1281,9 +1336,9 @@
         <span class="setting-cat-arrow" id="arrow-cat-admin">▾</span>
       </button>
       <div class="setting-cat-body" id="cat-admin">
-        <div class="setting-src-note" style="margin-bottom:6px;">管理者キーを入力してください</div>
+        <div class="setting-src-note" style="margin-bottom:6px;">開発者キーを入力してください</div>
         <div class="setting-admin-row">
-          <input id="admin-key-input" type="password" placeholder="管理者キーを入力..."
+          <input id="admin-key-input" type="password" placeholder="開発者キーを入力..."
             class="setting-token-input"
             style="margin-bottom:0;"
             oninput="clearAdminStatus()"
@@ -2626,8 +2681,8 @@ function applyHypocenterUpdate({ eventId, originTime, arrivalTime, hypocenter, r
 
 // ===== JSON記録ファイルから震源要素更新を取得・適用 =====
 // hypocenter_log.json を定期取得し、未適用のエントリのみ applyHypocenterUpdate() に渡す
-// キー：arrivalTime（照合用）+ reportDateTime（発表時刻）+ hypocenter（震源要素）
-const _hypocenterLogApplied = new Set(); // 適用済み reportDateTime を管理（重複防止）
+// ファイルは GitHub Actions (scripts/fetch_vxse61.js) が5分ごとに自動更新する
+const _hypocenterLogApplied = new Set(); // 適用済み arrivalTime を管理（重複防止）
 
 async function fetchHypocenterLog() {
   try {
@@ -2640,7 +2695,6 @@ async function fetchHypocenterLog() {
 
     for (const entry of entries) {
       const { arrivalTime = '', reportDateTime = '' } = entry;
-      // arrivalTime をユニークキーとして重複適用を防ぐ（同一発表時刻で複数地震が来る場合があるため）
       const key = arrivalTime || reportDateTime;
       if (!key || _hypocenterLogApplied.has(key)) continue;
       _hypocenterLogApplied.add(key);
@@ -2654,7 +2708,6 @@ async function fetchHypocenterLog() {
         magnitude: h.magnitude ?? -1,
       };
 
-      // eventId・originTime は使わず arrivalTime のみで照合
       applyHypocenterUpdate({ eventId: '', originTime: '', arrivalTime, hypocenter, reportDateTime });
       applied++;
     }
@@ -3177,7 +3230,7 @@ function parseEnvValue(text, name) {
 function loadTextFile(url) {
   if (typeof fetch === 'function') {
     return fetch(url, { cache: 'no-store' }).then(r => {
-      if (!r.ok) throw new Error('管理者キー設定ファイルを読み込めません');
+      if (!r.ok) throw new Error('開発者キー設定ファイルを読み込めません');
       return r.text();
     });
   }
@@ -3186,8 +3239,8 @@ function loadTextFile(url) {
     xhr.open('GET', url + '?t=' + Date.now(), true);
     xhr.onload = () => (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300))
       ? resolve(xhr.responseText)
-      : reject(new Error('管理者キー設定ファイルを読み込めません'));
-    xhr.onerror = () => reject(new Error('管理者キー設定ファイルを読み込めません'));
+      : reject(new Error('開発者キー設定ファイルを読み込めません'));
+    xhr.onerror = () => reject(new Error('開発者キー設定ファイルを読み込めません'));
     xhr.send();
   });
 }
@@ -3220,9 +3273,9 @@ function updateAdminUnlockUI() {
   if (input) {
     input.disabled = _adminUnlocked;
     input.value = _adminUnlocked ? '' : input.value;
-    input.placeholder = _adminUnlocked ? '解除済み' : '管理者キーを入力...';
+    input.placeholder = _adminUnlocked ? '解除済み' : '開発者キーを入力...';
   }
-  if (_adminUnlocked) setAdminStatus('管理者キーを確認しました', '#4f8');
+  if (_adminUnlocked) setAdminStatus('開発者キーを確認しました', '#4f8');
 }
 
 function focusAdminKeyInput(featureLabel) {
@@ -3230,7 +3283,7 @@ function focusAdminKeyInput(featureLabel) {
   const arrow = document.getElementById('arrow-cat-admin');
   if (body) body.style.display = '';
   if (arrow) arrow.style.transform = '';
-  setAdminStatus('管理者キーを入力してください', '#fa4');
+  setAdminStatus('開発者キーを入力してください', '#fa4');
   const input = document.getElementById('admin-key-input');
   if (input) input.focus();
 }
@@ -3247,7 +3300,7 @@ async function verifyAdminKeyInput(featureLabel) {
   try {
     adminKey = await loadAdminKey();
   } catch (err) {
-    setAdminStatus('.env から管理者キーを読み込めません', '#f64');
+    setAdminStatus('.env から開発者キーを読み込めません', '#f64');
     console.warn(err);
     return false;
   }
@@ -3256,7 +3309,7 @@ async function verifyAdminKeyInput(featureLabel) {
     updateAdminUnlockUI();
     return true;
   }
-  setAdminStatus('管理者キーが違います', '#f64');
+  setAdminStatus('開発者キーが違います', '#f64');
   if (inputEl) { inputEl.select(); inputEl.focus(); }
   return false;
 }
@@ -4401,7 +4454,7 @@ let _kyoshinLatestRaw   = null; // WebSocketから受け取った最新データ
 let _kyoshinTimer       = null;
 let _kyoshinPendingDraw = false;
 let _kyoshinColorMode   = 'color'; // 'color' | 'nerv'
-let _shindoEnabled  = false; // 震度換算ON/OFF（管理者キー必要）
+let _shindoEnabled  = false; // 震度換算ON/OFF（開発者キー必要）
 let _eewOnlyShindo  = false; // EEW発表時のみ（_shindoEnabled=true時のみ有効）
 let _lastKyoshinColorMode = _kyoshinColorMode;
 // 前フレームの状態キャッシュ（差分描画用）
@@ -4460,7 +4513,7 @@ function _kyoshinMakeDivIcon(shindo) {
   return makeShindoIcon(shindo.scaleKey, size, 'circle');
 }
 
-// 震度換算トグル（ONにするとき管理者キー要求、OFFにすると子トグルも連動リセット）
+// 震度換算トグル（ONにするとき開発者キー要求、OFFにすると子トグルも連動リセット）
 async function onKyoshinShindoToggle() {
   if (!_shindoEnabled) {
     if (!(await requireAdminKey('震度換算表示'))) return;
@@ -4489,7 +4542,7 @@ async function onKyoshinShindoToggle() {
   _kyoshinResetAndRedraw();
 }
 
-// EEWのみトグル（管理者キー不要・親トグルON時のみ表示）
+// EEWのみトグル（開発者キー不要・親トグルON時のみ表示）
 function onKyoshinEewOnlyToggle() {
   _eewOnlyShindo = !_eewOnlyShindo;
   const toggle = document.getElementById('kyoshin-eew-only-toggle');
@@ -4805,8 +4858,8 @@ function _clearDetectorEvent(id) {
 }
 
 // ===== 強震モニタ/海底地震計 描画トグル =====
-let _kyoshinVisible = true;
-let _dstenVisible   = true;
+let _kyoshinVisible = false;
+let _dstenVisible   = false;
 
 function _setToggleUI(thumbId, bgId, on) {
   const thumb = document.getElementById(thumbId);
@@ -4817,7 +4870,12 @@ function _setToggleUI(thumbId, bgId, on) {
   bg.style.borderColor = on ? '#3af' : '#444';
 }
 
-function onKyoshinVisibleToggle() {
+async function onKyoshinVisibleToggle() {
+  // ONにする場合は開発者キーが必要
+  if (!_kyoshinVisible) {
+    const ok = await verifyAdminKeyInput('強震モニタ描画');
+    if (!ok) return;
+  }
   _kyoshinVisible = !_kyoshinVisible;
   _setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', _kyoshinVisible);
   if (currentMode === 'eew') {
@@ -4825,7 +4883,12 @@ function onKyoshinVisibleToggle() {
   }
 }
 
-function onDstenVisibleToggle() {
+async function onDstenVisibleToggle() {
+  // ONにする場合は開発者キーが必要
+  if (!_dstenVisible) {
+    const ok = await verifyAdminKeyInput('海底地震計描画');
+    if (!ok) return;
+  }
   _dstenVisible = !_dstenVisible;
   _setToggleUI('dsten-visible-thumb', 'dsten-visible-toggle', _dstenVisible);
   if (currentMode === 'eew') {
@@ -5246,6 +5309,128 @@ connectEewWS();
 _kyoshinConnect();
 // 海底地震計も同様にバックグラウンドで接続・受信開始
 _dstenConnect();
+// ===== ボトムシート スワイプ制御 =====
+(function() {
+  const MOBILE_BP = 768;
+  // スナップ位置: 画面上端からの割合(0〜1)
+  // 0: ほぼ全画面(フル), 0.45: ハーフ, 0.72: ミニ
+  const SNAPS = [0.08, 0.45, 0.72];
+  const SNAP_LABELS = ['フル', 'ハーフ', 'ミニ'];
+  let currentSnap = 1; // 初期: ハーフ
+
+  const sidebar = document.getElementById('sidebar');
+  const handle  = document.getElementById('bs-handle-wrap');
+  const dots    = [
+    document.getElementById('bs-dot-0'),
+    document.getElementById('bs-dot-1'),
+    document.getElementById('bs-dot-2'),
+  ];
+
+  function isMobile() {
+    return window.innerWidth <= MOBILE_BP &&
+      !(window.matchMedia('(max-width:920px) and (orientation:landscape) and (max-height:500px)').matches);
+  }
+
+  function snapTo(idx, animate) {
+    if (!isMobile()) return;
+    idx = Math.max(0, Math.min(SNAPS.length - 1, idx));
+    currentSnap = idx;
+    const pct = SNAPS[idx] * 100;
+    sidebar.style.setProperty('--bs-y', pct + '%');
+    // 凡例の bottom を連動（シートの高さ分 = 100% - top）
+    const legendBottom = (1 - SNAPS[idx]) * 100;
+    document.documentElement.style.setProperty('--bs-legend-bottom', legendBottom + '%');
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    // Leafletに地図サイズ再計算を促す
+    if (window.map) setTimeout(() => map.invalidateSize(), 350);
+  }
+
+  function initMobile() {
+    if (!isMobile()) return;
+    sidebar.style.setProperty('--bs-y', (SNAPS[currentSnap] * 100) + '%');
+    document.documentElement.style.setProperty('--bs-legend-bottom', ((1 - SNAPS[currentSnap]) * 100) + '%');
+    dots.forEach((d, i) => d.classList.toggle('active', i === currentSnap));
+  }
+
+  let startY = 0, startTop = 0, dragging = false;
+
+  function onDragStart(e) {
+    if (!isMobile()) return;
+    dragging = true;
+    sidebar.classList.add('bs-dragging');
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startY = clientY;
+    // 現在のtop(px)を取得
+    startTop = sidebar.getBoundingClientRect().top;
+    e.preventDefault();
+  }
+
+  function onDragMove(e) {
+    if (!dragging || !isMobile()) return;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dy = clientY - startY;
+    let newTop = startTop + dy;
+    const vh = window.innerHeight;
+    // クランプ: 最小8%, 最大80%
+    newTop = Math.max(vh * 0.04, Math.min(vh * 0.82, newTop));
+    sidebar.style.setProperty('--bs-y', newTop + 'px');
+    document.documentElement.style.setProperty('--bs-legend-bottom', (vh - newTop) + 'px');
+    e.preventDefault();
+  }
+
+  function onDragEnd(e) {
+    if (!dragging || !isMobile()) return;
+    dragging = false;
+    sidebar.classList.remove('bs-dragging');
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const dy = clientY - startY;
+    const vh = window.innerHeight;
+    const currentTopPct = (startTop + dy) / vh;
+
+    // 最近接スナップに吸着
+    let best = 0, bestDist = Infinity;
+    SNAPS.forEach((s, i) => {
+      const d = Math.abs(s - currentTopPct);
+      if (d < bestDist) { bestDist = d; best = i; }
+    });
+    // 速いフリックなら方向で1段ジャンプ
+    // (dy > 60 => 下=ミニ方向, dy < -60 => 上=フル方向)
+    if (Math.abs(dy) > 60) {
+      best = dy > 0
+        ? Math.min(currentSnap + 1, SNAPS.length - 1)
+        : Math.max(currentSnap - 1, 0);
+    }
+    snapTo(best, true);
+  }
+
+  // イベント登録
+  if (handle) {
+    handle.addEventListener('touchstart', onDragStart, { passive: false });
+    handle.addEventListener('mousedown',  onDragStart);
+  }
+  document.addEventListener('touchmove',  onDragMove, { passive: false });
+  document.addEventListener('mousemove',  onDragMove);
+  document.addEventListener('touchend',   onDragEnd);
+  document.addEventListener('mouseup',    onDragEnd);
+
+  // タブクリック時にハーフに戻す
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (isMobile() && currentSnap === SNAPS.length - 1) snapTo(1, true);
+    });
+  });
+
+  // リサイズ時に再初期化
+  window.addEventListener('resize', () => { if (isMobile()) snapTo(currentSnap, false); });
+
+  // DOM準備完了後に初期化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobile);
+  } else {
+    initMobile();
+  }
+})();
+
 </script>
 <script src="eq_detector.js"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
