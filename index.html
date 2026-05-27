@@ -5051,8 +5051,10 @@ function _dstenDraw() {
 
     // ===== colorモード =====
     if (mode === 'color') {
-      if (_shindoEnabled && v >= 0) {
-        const shindo = _kyoshinToShindo(v);
+      // 震度換算ON かつ (EEWのみOFFまたはEEW発報中) のときアイコン
+      const useIcon = _shindoEnabled && v >= 0 && (!_eewOnlyShindo || _isEewActive());
+      const shindo = useIcon ? _kyoshinToShindo(v) : null;
+      if (shindo) {
         const key = 'icon:' + shindo.label + shindo.sub;
         if (_dstenPrevState[i] !== key) {
           if (_dstenDivMarkers[i]) { _dstenDivMarkers[i].remove(); _dstenDivMarkers[i] = null; }
@@ -5090,7 +5092,7 @@ function _dstenDraw() {
           _dstenPrevState[i] = key;
         }
       } else {
-        if (_shindoEnabled) {
+        if (_shindoEnabled && (!_eewOnlyShindo || _isEewActive())) {
           const shindo = _kyoshinToShindo(v);
           const key = 'icon:' + shindo.label + shindo.sub;
           if (_dstenPrevState[i] !== key) {
