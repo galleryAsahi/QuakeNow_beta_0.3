@@ -1,37 +1,61 @@
-name: VXSE61 震源要素更新 取得
-
+name: VXSE61取得 & Pages デプロイ
+ 
 on:
   schedule:
-    # UTC 0〜23時 を 5分ごと（GitHub Actionsのcron最小単位）
-    # 実際の実行間隔は5〜15分程度になる場合があります
+    # 5分ごとに実行（UTC）
     - cron: '*/5 * * * *'
-  # 手動でも実行できるようにしておく
+  # 手動実行・push時も動かす
   workflow_dispatch:
-
+  push:
+    branches: [main]
+ 
 jobs:
-  fetch:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # hypocenter_log.json をコミット・プッシュするために必要
-
+      contents: write
+      pages: write
+      id-token: write
+ 
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
-
+ 
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: VXSE61 取得スクリプトを実行
+ 
+      # ① VXSE61 取得 → hypocenter_log.json を更新
+      - name: VXSE61 取得
         run: node scripts/fetch_vxse61.js
-
-      - name: 変更があればコミット・プッシュ
+ 
+      # ② HTMLの __ADMIN_KEY__ を GitHub Secrets の本物のキーに置き換え
+      #    sed でプレースホルダーを置換してビルド済みHTMLを作る
+      - name: ADMIN_KEY を埋め込む
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          mkdir -p _site
+          sed "s/__ADMIN_KEY__/${ADMIN_KEY}/g" earthquake_v29_mobile.html > _site/index.html
+          cp hypocenter_log.json _site/hypocenter_log.json
+          # eq_detector.js など他に参照しているファイルがあればここに追加
+          # cp eq_detector.js _site/eq_detector.js
+ 
+      # ③ hypocenter_log.json に変更があればリポジトリにコミット
+      - name: hypocenter_log.json をコミット
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hypocenter_log.json
-          # 差分がある場合のみコミット（なければ何もしない）
-          git diff --cached --quiet || git commit -m "chore: VXSE61 震源要素更新 [skip ci]"
+          git diff --cached --quiet || git commit -m "chore: VXSE61 更新 [skip ci]"
           git push
-
+ 
+      # ④ _site フォルダを GitHub Pages に公開
+      - name: Pages にアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+ 
+      - name: Pages にデプロイ
+        uses: actions/deploy-pages@v4
