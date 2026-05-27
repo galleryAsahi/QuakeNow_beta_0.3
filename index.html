@@ -3223,43 +3223,15 @@ let _eewAxisToken = '';
 let _eewDmdataToken = '';
 let _lastEewSource = _eewSource;
 
-const ADMIN_ENV_PATH = './.env';
+// ADMIN_KEY は GitHub Actions がビルド時に __ADMIN_KEY__ を本物のキーに置き換える
+// リポジトリのソースコードには絶対にキーが残らない仕組み
+const _ADMIN_KEY_VALUE = '__ADMIN_KEY__';
 let _adminKeyPromise = null;
 let _adminUnlocked = false;
 
-function parseEnvValue(text, name) {
-  const re = new RegExp('^' + name + '\\s*=\\s*(.*)$', 'm');
-  const match = text.match(re);
-  if (!match) return '';
-  return match[1].trim().replace(/^['"]|['"]$/g, '');
-}
-
-function loadTextFile(url) {
-  if (typeof fetch === 'function') {
-    return fetch(url, { cache: 'no-store' }).then(r => {
-      if (!r.ok) throw new Error('開発者キー設定ファイルを読み込めません');
-      return r.text();
-    });
-  }
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url + '?t=' + Date.now(), true);
-    xhr.onload = () => (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300))
-      ? resolve(xhr.responseText)
-      : reject(new Error('開発者キー設定ファイルを読み込めません'));
-    xhr.onerror = () => reject(new Error('開発者キー設定ファイルを読み込めません'));
-    xhr.send();
-  });
-}
-
 function loadAdminKey() {
   if (!_adminKeyPromise) {
-    _adminKeyPromise = loadTextFile(ADMIN_ENV_PATH)
-      .then(text => {
-        const key = parseEnvValue(text, 'ADMIN_KEY');
-        if (!key) throw new Error('ADMIN_KEY が .env にありません');
-        return key;
-      });
+    _adminKeyPromise = Promise.resolve(_ADMIN_KEY_VALUE);
   }
   return _adminKeyPromise;
 }
