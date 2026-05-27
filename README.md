@@ -7,3 +7,6 @@
 
 注釈
 *1 [リアルタイム地震ビューアー TurboWarp版](https://turbowarp.org/636244032/fullscreen)のクラウド変数を使用しています。
+
+
+# バージョン履歴
