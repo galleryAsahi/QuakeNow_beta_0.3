@@ -39,8 +39,10 @@ jobs:
           mkdir -p _site
           sed "s/__ADMIN_KEY__/${ADMIN_KEY}/g" index.html > _site/index.html
           cp hypocenter_log.json _site/hypocenter_log.json
-          # eq_detector.js など他に参照しているファイルがあればここに追加
-          # cp eq_detector.js _site/eq_detector.js
+          cp hypocenter_log.json _site/hypocenter_log.json
+          cp eq_detector.js _site/eq_detector.js
+          cp areas.geojson _site/areas.geojson
+          cp tsunami_areas.geojson _site/tsunami_areas.geojson
  
       # ③ hypocenter_log.json に変更があればリポジトリにコミット
       - name: hypocenter_log.json をコミット
