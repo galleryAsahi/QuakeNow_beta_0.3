@@ -2681,8 +2681,8 @@ function applyHypocenterUpdate({ eventId, originTime, arrivalTime, hypocenter, r
 
 // ===== JSON記録ファイルから震源要素更新を取得・適用 =====
 // hypocenter_log.json を定期取得し、未適用のエントリのみ applyHypocenterUpdate() に渡す
-// ファイルは GitHub Actions (scripts/fetch_vxse61.js) が5分ごとに自動更新する
-const _hypocenterLogApplied = new Set(); // 適用済み arrivalTime を管理（重複防止）
+// キー：arrivalTime（照合用）+ reportDateTime（発表時刻）+ hypocenter（震源要素）
+const _hypocenterLogApplied = new Set(); // 適用済み reportDateTime を管理（重複防止）
 
 async function fetchHypocenterLog() {
   try {
@@ -2695,6 +2695,7 @@ async function fetchHypocenterLog() {
 
     for (const entry of entries) {
       const { arrivalTime = '', reportDateTime = '' } = entry;
+      // arrivalTime をユニークキーとして重複適用を防ぐ（同一発表時刻で複数地震が来る場合があるため）
       const key = arrivalTime || reportDateTime;
       if (!key || _hypocenterLogApplied.has(key)) continue;
       _hypocenterLogApplied.add(key);
@@ -2708,6 +2709,7 @@ async function fetchHypocenterLog() {
         magnitude: h.magnitude ?? -1,
       };
 
+      // eventId・originTime は使わず arrivalTime のみで照合
       applyHypocenterUpdate({ eventId: '', originTime: '', arrivalTime, hypocenter, reportDateTime });
       applied++;
     }
@@ -3216,43 +3218,15 @@ let _eewAxisToken = '';
 let _eewDmdataToken = '';
 let _lastEewSource = _eewSource;
 
-const ADMIN_ENV_PATH = './.env';
+// ADMIN_KEY は GitHub Actions がビルド時に __ADMIN_KEY__ を本物のキーに置き換える
+// リポジトリのソースコードには絶対にキーが残らない仕組み
+const _ADMIN_KEY_VALUE = '__ADMIN_KEY__';
 let _adminKeyPromise = null;
 let _adminUnlocked = false;
 
-function parseEnvValue(text, name) {
-  const re = new RegExp('^' + name + '\\s*=\\s*(.*)$', 'm');
-  const match = text.match(re);
-  if (!match) return '';
-  return match[1].trim().replace(/^['"]|['"]$/g, '');
-}
-
-function loadTextFile(url) {
-  if (typeof fetch === 'function') {
-    return fetch(url, { cache: 'no-store' }).then(r => {
-      if (!r.ok) throw new Error('開発者キー設定ファイルを読み込めません');
-      return r.text();
-    });
-  }
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url + '?t=' + Date.now(), true);
-    xhr.onload = () => (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300))
-      ? resolve(xhr.responseText)
-      : reject(new Error('開発者キー設定ファイルを読み込めません'));
-    xhr.onerror = () => reject(new Error('開発者キー設定ファイルを読み込めません'));
-    xhr.send();
-  });
-}
-
 function loadAdminKey() {
   if (!_adminKeyPromise) {
-    _adminKeyPromise = loadTextFile(ADMIN_ENV_PATH)
-      .then(text => {
-        const key = parseEnvValue(text, 'ADMIN_KEY');
-        if (!key) throw new Error('ADMIN_KEY が .env にありません');
-        return key;
-      });
+    _adminKeyPromise = Promise.resolve(_ADMIN_KEY_VALUE);
   }
   return _adminKeyPromise;
 }
@@ -3300,7 +3274,7 @@ async function verifyAdminKeyInput(featureLabel) {
   try {
     adminKey = await loadAdminKey();
   } catch (err) {
-    setAdminStatus('開発者キーを読み込めません', '#f64');
+    setAdminStatus('.env から開発者キーを読み込めません', '#f64');
     console.warn(err);
     return false;
   }
