@@ -1218,7 +1218,7 @@
             <span style="font-size:11px;color:#ccc;">海底地震計描画</span>
           </label>
         </div>
-        <!-- 震度換算トグル（開発者キーが必要）→ ONにすると「EEWのみ」トグルが出現 -->
+        <!-- 震度換算トグル → ONにすると「EEWのみ」トグルが出現 -->
         <div style="margin-top:8px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
             <div id="kyoshin-shindo-toggle"
@@ -1330,6 +1330,28 @@
           フィルターをリセット
         </button>
 
+      </div>
+    </div>
+
+    <!-- ===== 限定公開キー ===== -->
+    <div class="setting-category">
+      <button class="setting-cat-header" onclick="toggleSettingCat('cat-limited')" aria-expanded="true">
+        <span class="setting-cat-title">限定公開キー</span>
+        <span class="setting-cat-badge" id="badge-cat-limited" style="display:none;">解除済み</span>
+        <span class="setting-cat-arrow" id="arrow-cat-limited">▾</span>
+      </button>
+      <div class="setting-cat-body" id="cat-limited">
+        <div class="setting-src-note" style="margin-bottom:6px;">強震モニタ描画・AXIS EEWの利用に必要です</div>
+        <div class="setting-admin-row">
+          <input id="limited-key-input" type="password" placeholder="限定公開キーを入力..."
+            class="setting-token-input"
+            style="margin-bottom:0;"
+            oninput="clearLimitedStatus()"
+            onkeydown="if(event.key==='Enter') unlockLimitedKey()"
+            onfocus="this.style.borderColor='#6af'" onblur="this.style.borderColor='#3a3a3a'">
+          <button class="setting-admin-btn" style="border-color:#6af;background:#0d2233;color:#6af;" onclick="unlockLimitedKey()">解除</button>
+        </div>
+        <div id="limited-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
       </div>
     </div>
 
@@ -3223,6 +3245,64 @@ let _eewAxisToken = '';
 let _eewDmdataToken = '';
 let _lastEewSource = _eewSource;
 
+// 限定公開キー（強震モニタ描画・AXIS EEW用）
+// ソースコードに直接埋め込む（限定公開のサービス向け）
+const _LIMITED_KEY_VALUE = '__LIMITED_KEY__';
+let _limitedUnlocked = false;
+
+function setLimitedStatus(msg, color) {
+  const el = document.getElementById('limited-key-status');
+  if (el) { el.textContent = msg; el.style.color = color || '#888'; }
+}
+
+function clearLimitedStatus() {
+  if (!_limitedUnlocked) setLimitedStatus('', '#888');
+}
+
+function updateLimitedUnlockUI() {
+  const badge = document.getElementById('badge-cat-limited');
+  const input = document.getElementById('limited-key-input');
+  if (badge) badge.style.display = _limitedUnlocked ? '' : 'none';
+  if (input) {
+    input.disabled = _limitedUnlocked;
+    input.value = _limitedUnlocked ? '' : input.value;
+    input.placeholder = _limitedUnlocked ? '解除済み' : '限定公開キーを入力...';
+  }
+  if (_limitedUnlocked) setLimitedStatus('限定公開キーを確認しました', '#4f8');
+}
+
+function focusLimitedKeyInput() {
+  const body = document.getElementById('cat-limited');
+  const arrow = document.getElementById('arrow-cat-limited');
+  if (body) body.style.display = '';
+  if (arrow) arrow.style.transform = '';
+  setLimitedStatus('限定公開キーを入力してください', '#6af');
+  const input = document.getElementById('limited-key-input');
+  if (input) input.focus();
+}
+
+function verifyLimitedKeyInput() {
+  if (_limitedUnlocked) return true;
+  const inputEl = document.getElementById('limited-key-input');
+  const input = (inputEl ? inputEl.value : '').trim();
+  if (!input) {
+    focusLimitedKeyInput();
+    return false;
+  }
+  if (input === _LIMITED_KEY_VALUE) {
+    _limitedUnlocked = true;
+    updateLimitedUnlockUI();
+    return true;
+  }
+  setLimitedStatus('限定公開キーが違います', '#f64');
+  if (inputEl) { inputEl.select(); inputEl.focus(); }
+  return false;
+}
+
+function unlockLimitedKey() {
+  verifyLimitedKeyInput();
+}
+
 // ADMIN_KEY は GitHub Actions がビルド時に __ADMIN_KEY__ を本物のキーに置き換える
 // リポジトリのソースコードには絶対にキーが残らない仕組み
 const _ADMIN_KEY_VALUE = '__ADMIN_KEY__';
@@ -3307,7 +3387,7 @@ function revertSelectValue(id, value) {
 }
 
 async function onEewSourceSelectChange(src) {
-  if (src === 'axis' && !(await requireAdminKey('AXIS'))) {
+  if (src === 'axis' && !verifyLimitedKeyInput()) {
     revertSelectValue('eew-src-select', _lastEewSource);
     return;
   }
@@ -3365,7 +3445,7 @@ function updateConnectBtn() {
 
 async function applyAllSources() {
   // ===== バリデーション（先に全部チェック） =====
-  if (_eewSource === 'axis' && !(await requireAdminKey('AXIS'))) return;
+  if (_eewSource === 'axis' && !verifyLimitedKeyInput()) return;
 
   if (_quakeSrc === 'dmdata') {
     const tok = (document.getElementById('quake-dmdata-token') || {}).value.trim();
@@ -4850,9 +4930,9 @@ function _setToggleUI(thumbId, bgId, on) {
 }
 
 async function onKyoshinVisibleToggle() {
-  // ONにする場合は開発者キーが必要
+  // ONにする場合は限定公開キーが必要
   if (!_kyoshinVisible) {
-    const ok = await verifyAdminKeyInput('強震モニタ描画');
+    const ok = verifyLimitedKeyInput();
     if (!ok) return;
   }
   _kyoshinVisible = !_kyoshinVisible;
@@ -4863,9 +4943,9 @@ async function onKyoshinVisibleToggle() {
 }
 
 async function onDstenVisibleToggle() {
-  // ONにする場合は開発者キーが必要
+  // ONにする場合は限定公開キーが必要
   if (!_dstenVisible) {
-    const ok = await verifyAdminKeyInput('海底地震計描画');
+    const ok = verifyLimitedKeyInput();
     if (!ok) return;
   }
   _dstenVisible = !_dstenVisible;
