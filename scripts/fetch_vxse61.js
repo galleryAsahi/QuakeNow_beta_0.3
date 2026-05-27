@@ -9,14 +9,14 @@
  *
  * 必要な Node.js バージョン: 18以上（グローバル fetch 使用）
  */
-
+ 
 'use strict';
 const fs   = require('fs');
 const path = require('path');
-
+ 
 const LOG_PATH  = path.join(__dirname, '..', 'hypocenter_log.json');
 const MAX_EVENTS = 50; // JSON に保持する最大件数
-
+ 
 // ===== JSON ログ読み書き =====
 function loadLog() {
   try {
@@ -32,13 +32,13 @@ function loadLog() {
     };
   }
 }
-
+ 
 function saveLog(data) {
   data.events.sort((a, b) => new Date(b.reportDateTime || 0) - new Date(a.reportDateTime || 0));
   if (data.events.length > MAX_EVENTS) data.events = data.events.slice(0, MAX_EVENTS);
   fs.writeFileSync(LOG_PATH, JSON.stringify(data, null, 2), 'utf-8');
 }
-
+ 
 // ===== 時刻フォーマット変換 =====
 // "2026-05-20T11:46:00+09:00" → "2026/05/20 11:46"（JST）
 function toJstSlash(isoStr) {
@@ -53,22 +53,22 @@ function toJstSlash(isoStr) {
   const m = String(jst.getUTCMinutes()).padStart(2, '0');
   return `${Y}/${M}/${D} ${h}:${m}`;
 }
-
+ 
 // ===== VXSE61 XML パーサー =====
 function parseVxse61Xml(text) {
   const infoType = (text.match(/<InfoType[^>]*>([^<]+)<\/InfoType>/) || [])[1];
   if (infoType && infoType.trim() === '取消') return null;
-
+ 
   const get = tag => {
     const m = text.match(new RegExp(`<${tag}[^>]*>([^<]+)<\\/${tag}>`));
     return m ? m[1].trim() : '';
   };
-
+ 
   const reportDateTime = get('ReportDateTime');
   const arrivalTime    = get('ArrivalTime');
   const epiName        = get('Name');
   if (!arrivalTime && !reportDateTime) return null;
-
+ 
   // 座標パース（度分形式 "+38˚28.0'+141˚37.6'-59000/" or 10進度形式）
   const coordStr = (text.match(/<jmx_eb:Coordinate[^>]*>([^<]+)<\/jmx_eb:Coordinate>/) || [])[1] || '';
   let latitude = null, longitude = null, depth = null;
@@ -88,53 +88,53 @@ function parseVxse61Xml(text) {
       }
     }
   }
-
+ 
   const magRaw    = (text.match(/<jmx_eb:Magnitude[^>]*>([^<]+)<\/jmx_eb:Magnitude>/) || [])[1];
   const magnitude = magRaw ? parseFloat(magRaw) || null : null;
-
+ 
   return {
     arrivalTime:    toJstSlash(arrivalTime),
     reportDateTime: toJstSlash(reportDateTime),
     hypocenter: { name: epiName || null, latitude, longitude, depth, magnitude },
   };
 }
-
+ 
 // ===== メイン処理 =====
 async function main() {
   console.log('=== VXSE61 fetch start ===');
-
+ 
   // 既存ログをロードして重複防止セットを作る
   const log = loadLog();
   const existingKeys = new Set(
     log.events.map(e => e.reportDateTime || e.arrivalTime).filter(Boolean)
   );
   console.log(`既存エントリ: ${log.events.length} 件`);
-
+ 
   const newEntries = [];
-
+ 
   // --- 1st: 気象庁フィード（大量のXMLカタログ版） ---
   const FEED_URL = 'https://www.data.jma.go.jp/developer/xml/feed/eqvol_l.xml';
   try {
     const res = await fetch(FEED_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const feedText = await res.text();
-
+ 
     // title に「震源要素更新」を含むエントリの href を最新20件取得
     const hrefs = [...feedText.matchAll(/<entry>([\s\S]*?)<\/entry>/g)]
       .filter(m => m[1].includes('震源要素更新'))
       .map(m => (m[1].match(/<link[^>]+href="([^"]+)"/) || [])[1])
       .filter(Boolean)
       .slice(0, 20);
-
+ 
     console.log(`フィードから震源要素更新 ${hrefs.length} 件のURLを取得`);
-
+ 
     for (const href of hrefs) {
       try {
         const xRes = await fetch(href);
         if (!xRes.ok) continue;
         const entry = parseVxse61Xml(await xRes.text());
         if (!entry) continue;
-
+ 
         const key = entry.reportDateTime || entry.arrivalTime;
         if (!key || existingKeys.has(key)) continue;
         existingKeys.add(key);
@@ -147,7 +147,7 @@ async function main() {
   } catch (e) {
     console.warn(`[気象庁フィード] 取得失敗: ${e.message}`);
   }
-
+ 
   // --- 2nd: フォールバック（agora / NII） ---
   // ※ GitHub Actions の IP からは CORS 制限なくアクセス可能（サーバーサイド）
   if (newEntries.length === 0) {
@@ -159,19 +159,19 @@ async function main() {
       const res = await fetch(LIST_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
-
+ 
       const ids = [...new Set(
         [...html.matchAll(/report_xml\.pl\?id=(\d{14}_\d+_VXSE61_\d+)/g)].map(m => m[1])
       )];
       console.log(`[agora] VXSE61 エントリ ${ids.length} 件`);
-
+ 
       for (const id of ids.slice(0, 20)) {
         try {
           const xRes = await fetch(`https://agora.ex.nii.ac.jp/cgi-bin/cps/report_xml.pl?id=${id}`);
           if (!xRes.ok) continue;
           const entry = parseVxse61Xml(await xRes.text());
           if (!entry) continue;
-
+ 
           const key = entry.reportDateTime || entry.arrivalTime;
           if (!key || existingKeys.has(key)) continue;
           existingKeys.add(key);
@@ -183,7 +183,7 @@ async function main() {
       console.warn(`[agora] 取得失敗: ${e.message}`);
     }
   }
-
+ 
   // ログに追記して保存
   if (newEntries.length > 0) {
     log.events.push(...newEntries);
@@ -192,11 +192,12 @@ async function main() {
   } else {
     console.log('新しいエントリはありませんでした（変更なし）');
   }
-
+ 
   console.log('=== VXSE61 fetch end ===');
 }
-
+ 
 main().catch(e => {
   console.error('予期しないエラー:', e);
   process.exit(1);
 });
+ 
