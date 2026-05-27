@@ -1333,47 +1333,45 @@
       </div>
     </div>
 
-    <!-- ===== 限定公開キー ===== -->
-    <div class="setting-category">
-      <button class="setting-cat-header" onclick="toggleSettingCat('cat-limited')" aria-expanded="true">
-        <span class="setting-cat-title">限定公開キー</span>
-        <span class="setting-cat-badge" id="badge-cat-limited" style="display:none;">解除済み</span>
-        <span class="setting-cat-arrow" id="arrow-cat-limited">▾</span>
-      </button>
-      <div class="setting-cat-body" id="cat-limited">
-        <div class="setting-src-note" style="margin-bottom:6px;">強震モニタ描画・AXIS EEWの利用に必要です</div>
-        <div class="setting-admin-row">
-          <input id="limited-key-input" type="password" placeholder="限定公開キーを入力..."
-            class="setting-token-input"
-            style="margin-bottom:0;"
-            oninput="clearLimitedStatus()"
-            onkeydown="if(event.key==='Enter') unlockLimitedKey()"
-            onfocus="this.style.borderColor='#6af'" onblur="this.style.borderColor='#3a3a3a'">
-          <button class="setting-admin-btn" style="border-color:#6af;background:#0d2233;color:#6af;" onclick="unlockLimitedKey()">解除</button>
-        </div>
-        <div id="limited-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
-      </div>
-    </div>
-
-    <!-- ===== 実験的機能 ===== -->
+    <!-- ===== アクセスキー ===== -->
     <div class="setting-category">
       <button class="setting-cat-header" onclick="toggleSettingCat('cat-admin')" aria-expanded="true">
-        <span class="setting-cat-title">実験的機能</span>
+        <span class="setting-cat-title">アクセスキー</span>
         <span class="setting-cat-badge" id="badge-cat-admin" style="display:none;">解除済み</span>
         <span class="setting-cat-arrow" id="arrow-cat-admin">▾</span>
       </button>
       <div class="setting-cat-body" id="cat-admin">
-        <div class="setting-src-note" style="margin-bottom:6px;">開発者キーを入力してください</div>
-        <div class="setting-admin-row">
-          <input id="admin-key-input" type="password" placeholder="開発者キーを入力..."
-            class="setting-token-input"
-            style="margin-bottom:0;"
-            oninput="clearAdminStatus()"
-            onkeydown="if(event.key==='Enter') unlockAdminKey()"
-            onfocus="this.style.borderColor='#fa4'" onblur="this.style.borderColor='#3a3a3a'">
-          <button class="setting-admin-btn" onclick="unlockAdminKey()">解除</button>
+
+        <!-- 限定公開キー -->
+        <div style="margin-bottom:10px;">
+          <div class="setting-src-note" style="margin-bottom:6px;">限定公開キー（強震モニタ描画・AXIS EEW）</div>
+          <div class="setting-admin-row">
+            <input id="limited-key-input" type="password" placeholder="限定公開キーを入力..."
+              class="setting-token-input"
+              style="margin-bottom:0;"
+              oninput="clearLimitedStatus()"
+              onkeydown="if(event.key==='Enter') unlockLimitedKey()"
+              onfocus="this.style.borderColor='#6af'" onblur="this.style.borderColor='#3a3a3a'">
+            <button class="setting-admin-btn" style="border-color:#6af;background:#0d2233;color:#6af;" onclick="unlockLimitedKey()">解除</button>
+          </div>
+          <div id="limited-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
         </div>
-        <div id="admin-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
+
+        <!-- 開発者キー（限定公開キーより上位） -->
+        <div style="border-top:1px solid #2a2a2a;padding-top:10px;">
+          <div class="setting-src-note" style="margin-bottom:6px;">開発者キー（実験的機能・上位キー）</div>
+          <div class="setting-admin-row">
+            <input id="admin-key-input" type="password" placeholder="開発者キーを入力..."
+              class="setting-token-input"
+              style="margin-bottom:0;"
+              oninput="clearAdminStatus()"
+              onkeydown="if(event.key==='Enter') unlockAdminKey()"
+              onfocus="this.style.borderColor='#fa4'" onblur="this.style.borderColor='#3a3a3a'">
+            <button class="setting-admin-btn" onclick="unlockAdminKey()">解除</button>
+          </div>
+          <div id="admin-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
+        </div>
+
       </div>
     </div>
 
@@ -3247,7 +3245,7 @@ let _lastEewSource = _eewSource;
 
 // 限定公開キー（強震モニタ描画・AXIS EEW用）
 // ソースコードに直接埋め込む（限定公開のサービス向け）
-const _LIMITED_KEY_VALUE = 'lucky6090';
+const _LIMITED_KEY_VALUE = '__LIMITED_KEY__';
 let _limitedUnlocked = false;
 
 function setLimitedStatus(msg, color) {
@@ -3260,20 +3258,21 @@ function clearLimitedStatus() {
 }
 
 function updateLimitedUnlockUI() {
-  const badge = document.getElementById('badge-cat-limited');
   const input = document.getElementById('limited-key-input');
-  if (badge) badge.style.display = _limitedUnlocked ? '' : 'none';
   if (input) {
     input.disabled = _limitedUnlocked;
     input.value = _limitedUnlocked ? '' : input.value;
     input.placeholder = _limitedUnlocked ? '解除済み' : '限定公開キーを入力...';
   }
+  // カテゴリーバッジ：限定公開か開発者どちらかが解除されていれば表示
+  const badge = document.getElementById('badge-cat-admin');
+  if (badge) badge.style.display = (_limitedUnlocked || _adminUnlocked) ? '' : 'none';
   if (_limitedUnlocked) setLimitedStatus('限定公開キーを確認しました', '#4f8');
 }
 
 function focusLimitedKeyInput() {
-  const body = document.getElementById('cat-limited');
-  const arrow = document.getElementById('arrow-cat-limited');
+  const body = document.getElementById('cat-admin');
+  const arrow = document.getElementById('arrow-cat-admin');
   if (body) body.style.display = '';
   if (arrow) arrow.style.transform = '';
   setLimitedStatus('限定公開キーを入力してください', '#6af');
@@ -3328,13 +3327,20 @@ function clearAdminStatus() {
 function updateAdminUnlockUI() {
   const badge = document.getElementById('badge-cat-admin');
   const input = document.getElementById('admin-key-input');
-  if (badge) badge.style.display = _adminUnlocked ? '' : 'none';
+  if (badge) badge.style.display = (_limitedUnlocked || _adminUnlocked) ? '' : 'none';
   if (input) {
     input.disabled = _adminUnlocked;
     input.value = _adminUnlocked ? '' : input.value;
     input.placeholder = _adminUnlocked ? '解除済み' : '開発者キーを入力...';
   }
-  if (_adminUnlocked) setAdminStatus('開発者キーを確認しました', '#4f8');
+  if (_adminUnlocked) {
+    setAdminStatus('開発者キーを確認しました', '#4f8');
+    // 開発者キーは上位キー → 限定公開キーも自動解除
+    if (!_limitedUnlocked) {
+      _limitedUnlocked = true;
+      updateLimitedUnlockUI();
+    }
+  }
 }
 
 function focusAdminKeyInput(featureLabel) {
