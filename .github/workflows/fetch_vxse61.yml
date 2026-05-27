@@ -1,1 +1,37 @@
+name: VXSE61 震源要素更新 取得
+
+on:
+  schedule:
+    # UTC 0〜23時 を 5分ごと（GitHub Actionsのcron最小単位）
+    # 実際の実行間隔は5〜15分程度になる場合があります
+    - cron: '*/5 * * * *'
+  # 手動でも実行できるようにしておく
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # hypocenter_log.json をコミット・プッシュするために必要
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: VXSE61 取得スクリプトを実行
+        run: node scripts/fetch_vxse61.js
+
+      - name: 変更があればコミット・プッシュ
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add hypocenter_log.json
+          # 差分がある場合のみコミット（なければ何もしない）
+          git diff --cached --quiet || git commit -m "chore: VXSE61 震源要素更新 [skip ci]"
+          git push
 
