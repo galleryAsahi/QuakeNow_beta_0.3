@@ -2838,8 +2838,8 @@ function setMode(mode) {
     if (_dstenLayer && !map.hasLayer(_dstenLayer)) _dstenLayer.addTo(map);
     if (!map.hasLayer(_eewLayerGroup))  _eewLayerGroup.addTo(map);
     if (_scaleLegend) _scaleLegend.style.display = '';
-    if (_kyoshinVisible) startKyoshinWS(); else stopKyoshinWS();
-    if (_dstenVisible)   startDstenWS();   else stopDstenWS();
+    if (_kyoshinVisible) { startKyoshinWS(); _kyoshinScheduleDraw(); } else stopKyoshinWS();
+    if (_dstenVisible)   { startDstenWS();   _dstenScheduleDraw();   } else stopDstenWS();
 
   } else if (mode === 'tsunami') {
     // 津波情報：津波エリアレイヤー・津波凡例
@@ -3245,7 +3245,7 @@ let _lastEewSource = _eewSource;
 
 // 限定公開キー（強震モニタ描画・AXIS EEW用）
 // ソースコードに直接埋め込む（限定公開のサービス向け）
-const _LIMITED_KEY_VALUE = '__LIMITED_KEY__';
+const _LIMITED_KEY_VALUE = 'lucky6090';
 let _limitedUnlocked = false;
 
 function setLimitedStatus(msg, color) {
@@ -4943,9 +4943,7 @@ async function onKyoshinVisibleToggle() {
   }
   _kyoshinVisible = !_kyoshinVisible;
   _setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', _kyoshinVisible);
-  if (currentMode === 'eew') {
-    if (_kyoshinVisible) startKyoshinWS(); else stopKyoshinWS();
-  }
+  if (_kyoshinVisible) startKyoshinWS(); else stopKyoshinWS();
 }
 
 async function onDstenVisibleToggle() {
@@ -4956,9 +4954,7 @@ async function onDstenVisibleToggle() {
   }
   _dstenVisible = !_dstenVisible;
   _setToggleUI('dsten-visible-thumb', 'dsten-visible-toggle', _dstenVisible);
-  if (currentMode === 'eew') {
-    if (_dstenVisible) startDstenWS(); else stopDstenWS();
-  }
+  if (_dstenVisible) startDstenWS(); else stopDstenWS();
 }
 
 function startKyoshinWS() {
