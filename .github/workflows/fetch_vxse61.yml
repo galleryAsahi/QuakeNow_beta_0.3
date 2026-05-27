@@ -37,7 +37,7 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           mkdir -p _site
-          sed "s/__ADMIN_KEY__/${ADMIN_KEY}/g" earthquake_v29_mobile.html > _site/index.html
+          sed "s/__ADMIN_KEY__/${ADMIN_KEY}/g" index.html > _site/index.html
           cp hypocenter_log.json _site/hypocenter_log.json
           # eq_detector.js など他に参照しているファイルがあればここに追加
           # cp eq_detector.js _site/eq_detector.js
