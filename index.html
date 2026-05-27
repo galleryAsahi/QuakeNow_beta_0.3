@@ -810,12 +810,14 @@
       box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
       z-index: 200;
       overflow: hidden;
+      overscroll-behavior: none;
       transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1);
       will-change: top;
     }
     /* ドラッグ中はtransitionをOFF */
     #sidebar.bs-dragging {
       transition: none;
+      touch-action: none;
     }
 
     /* ----- ドラッグハンドル ----- */
@@ -5403,11 +5405,10 @@ connectEewWS();
 // 強震モニタはアプリ起動時からバックグラウンドで接続・受信開始
 // リアルタイムタブに切り替えた際に待機なく即座に表示できる
 _kyoshinConnect();
-// 強震モニタはデフォルトON：トグルUIをON状態に初期化し描画を開始
-_setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', true);
-startKyoshinWS();
 // 海底地震計も同様にバックグラウンドで接続・受信開始
 _dstenConnect();
+// 強震モニタデフォルトON：eq_detector.js 読み込み完了後に startKyoshinWS を呼ぶ
+window._kyoshinAutoStart = true;
 // ===== ボトムシート スワイプ制御 =====
 (function() {
   const MOBILE_BP = 480;
@@ -5544,6 +5545,13 @@ _dstenConnect();
 
 </script>
 <script src="eq_detector.js"></script>
+<script>
+// eq_detector.js 読み込み完了後に強震モニタのデフォルトONを適用
+if (window._kyoshinAutoStart) {
+  _setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', true);
+  startKyoshinWS();
+}
+</script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
