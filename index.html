@@ -1353,8 +1353,23 @@
       </button>
       <div class="setting-cat-body" id="cat-admin">
 
-        <!-- 開発者キー -->
-        <div>
+        <!-- 限定公開キー -->
+        <div style="margin-bottom:10px;">
+          <div class="setting-src-note" style="margin-bottom:6px;">限定公開キー（強震モニタ描画・AXIS EEW）</div>
+          <div class="setting-admin-row">
+            <input id="limited-key-input" type="password" placeholder="限定公開キーを入力..."
+              class="setting-token-input"
+              style="margin-bottom:0;"
+              oninput="clearLimitedStatus()"
+              onkeydown="if(event.key==='Enter') unlockLimitedKey()"
+              onfocus="this.style.borderColor='#6af'" onblur="this.style.borderColor='#3a3a3a'">
+            <button class="setting-admin-btn" style="border-color:#6af;background:#0d2233;color:#6af;" onclick="unlockLimitedKey()">解除</button>
+          </div>
+          <div id="limited-key-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
+        </div>
+
+        <!-- 開発者キー（限定公開キーより上位） -->
+        <div style="border-top:1px solid #2a2a2a;padding-top:10px;">
           <div class="setting-src-note" style="margin-bottom:6px;">開発者キー（実験的機能・上位キー）</div>
           <div class="setting-admin-row">
             <input id="admin-key-input" type="password" placeholder="開発者キーを入力..."
@@ -3278,7 +3293,7 @@ let _lastEewSource = _eewSource;
 // 限定公開キー（強震モニタ描画・AXIS EEW用）
 // ソースコードに直接埋め込む（限定公開のサービス向け）
 const _LIMITED_KEY_VALUE = 'lucky6090';
-let _limitedUnlocked = true; // 一般公開：常に解除済み
+let _limitedUnlocked = false;
 
 function setLimitedStatus(msg, color) {
   const el = document.getElementById('limited-key-status');
@@ -4963,7 +4978,7 @@ function _clearDetectorEvent(id) {
 }
 
 // ===== 強震モニタ/海底地震計 描画トグル =====
-let _kyoshinVisible = true; // デフォルトON
+let _kyoshinVisible = false;
 let _dstenVisible   = false;
 
 function _setToggleUI(thumbId, bgId, on) {
@@ -4976,12 +4991,22 @@ function _setToggleUI(thumbId, bgId, on) {
 }
 
 async function onKyoshinVisibleToggle() {
+  // ONにする場合は限定公開キーが必要
+  if (!_kyoshinVisible) {
+    const ok = verifyLimitedKeyInput();
+    if (!ok) return;
+  }
   _kyoshinVisible = !_kyoshinVisible;
   _setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', _kyoshinVisible);
   if (_kyoshinVisible) startKyoshinWS(); else stopKyoshinWS();
 }
 
 async function onDstenVisibleToggle() {
+  // ONにする場合は限定公開キーが必要
+  if (!_dstenVisible) {
+    const ok = verifyLimitedKeyInput();
+    if (!ok) return;
+  }
   _dstenVisible = !_dstenVisible;
   _setToggleUI('dsten-visible-thumb', 'dsten-visible-toggle', _dstenVisible);
   if (_dstenVisible) startDstenWS(); else stopDstenWS();
@@ -5402,9 +5427,6 @@ connectEewWS();
 // 強震モニタはアプリ起動時からバックグラウンドで接続・受信開始
 // リアルタイムタブに切り替えた際に待機なく即座に表示できる
 _kyoshinConnect();
-// 強震モニタはデフォルトON：トグルUIをON状態に初期化し描画を開始
-_setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', true);
-startKyoshinWS();
 // 海底地震計も同様にバックグラウンドで接続・受信開始
 _dstenConnect();
 // ===== ボトムシート スワイプ制御 =====
