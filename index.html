@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>地震情報</title>
+<title>QuakeNow</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -851,11 +851,11 @@
       position: static;
       width: 100%;
       min-width: 0;
-      height: auto;
+      height: 80px;
       flex-direction: row;
       justify-content: space-around;
-      align-items: center;
-      padding: 6px 6px;
+      align-items: flex-start;
+      padding: 6px 8px 0;
       gap: 4px;
       background: #111;
       border-top: 1px solid #2a2a2a;
@@ -866,8 +866,8 @@
       flex-shrink: 0;
     }
     .mode-btn {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
     }
 
     /* ----- サイドバー本体 ----- */
@@ -1186,6 +1186,55 @@
         </div>
         <div id="eew-demo-status" style="font-size:10px;color:#888;margin-top:6px;min-height:14px;text-align:center;"></div>
 
+      </div>
+    </div>
+
+
+    <!-- ===== カテゴリー: 通知音 ===== -->
+    <div class="setting-category">
+      <button class="setting-cat-header" onclick="toggleSettingCat('cat-sound')" aria-expanded="true">
+        <span class="setting-cat-title">🔔 通知音</span>
+        <span class="setting-cat-arrow" id="arrow-cat-sound">▾</span>
+      </button>
+      <div class="setting-cat-body" id="cat-sound">
+        <div style="margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+            <div id="sound-enabled-toggle"
+              onclick="onSoundEnabledToggle()"
+              style="position:relative;width:36px;height:20px;border-radius:10px;background:#4af;border:1px solid #39d;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
+              <div id="sound-enabled-thumb"
+                style="position:absolute;top:2px;left:18px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left 0.2s,background 0.2s;"></div>
+            </div>
+            <span style="font-size:11px;color:#ccc;">通知音を鳴らす</span>
+          </label>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;color:#888;margin-bottom:4px;">音量</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" id="sound-volume-slider" min="0" max="100" value="70"
+              oninput="onSoundVolumeChange(this.value)"
+              style="flex:1;accent-color:#4af;cursor:pointer;">
+            <span id="sound-volume-label" style="font-size:11px;color:#aaa;min-width:28px;text-align:right;">70%</span>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#666;margin-bottom:5px;">テスト再生</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div style="position:relative;flex:1;">
+            <select id="sound-test-select"
+              style="width:100%;appearance:none;-webkit-appearance:none;background:#111;border:1px solid #3a3a3a;border-radius:5px;padding:6px 24px 6px 9px;color:#eee;font-size:11px;cursor:pointer;outline:none;">
+              <option value="quake">地震情報</option>
+              <option value="scalePrompt">震度速報</option>
+              <option value="hypocenter">震源情報</option>
+              <option value="eewForecast">EEW予報</option>
+              <option value="eewWarn">EEW警報</option>
+              <option value="eewCancel">EEWキャンセル</option>
+            </select>
+            <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#888;font-size:10px;">▾</span>
+          </div>
+          <button onclick="playSound(document.getElementById('sound-test-select').value)"
+            style="font-size:11px;font-weight:bold;padding:6px 12px;border-radius:5px;border:1px solid #4af;background:#0d2233;color:#4af;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background 0.15s;"
+            onmouseover="this.style.background='#163348'" onmouseout="this.style.background='#0d2233'">▶ 再生</button>
+        </div>
       </div>
     </div>
 
@@ -2367,6 +2416,7 @@ function connectWS() {
       const ev = JSON.parse(e.data);
       if (ev.code === 551) {
         addOrUpdateEvent(ev);
+        if (window._notifySoundForEvent) _notifySoundForEvent(ev);
         setStatus(`✅ 更新: ${formatTime(ev.earthquake?.time)}`);
       } else if (ev.code === 552) {
         addOrUpdateTsunami(ev);
@@ -3175,16 +3225,19 @@ function handleEew(eew) {
       eewEvents[id].cardEl = renderEewCard(id, eew);
       setTimeout(() => removeEewCard(id), 3000);
     }
+    if (window._notifySoundForEew) _notifySoundForEew(eew);
     return;
   }
   if (eewEvents[id]) clearTimeout(eewEvents[id].timerId);
   const card = renderEewCard(id, eew);
+  const _isNewEew = !eewEvents[id];
   if (!eewEvents[id]) {
     eewEvents[id] = { data: eew, timerId: null, cardEl: card, layer: L.layerGroup().addTo(_eewLayerGroup), psRafId: null, psCircles: [] };
   } else {
     eewEvents[id].data = eew;
     eewEvents[id].cardEl = card;
   }
+  if (_isNewEew && window._notifySoundForEew) _notifySoundForEew(eew);
   drawEewAreas(id, eew);
   autoSetMode('eew');
   // 初回受信時のみカメラ移動（_cameraMovedフラグで制御）
@@ -4071,6 +4124,8 @@ function stopHistoricalEewDemo() {
   _replayTimers.forEach(t => clearTimeout(t));
   _replayTimers = [];
   _clockReplayOffset = null; // 時計を現実時刻に戻す
+  // 表示中のEEWカードをすべて削除
+  Object.keys(eewEvents).forEach(id => removeEewCard(id));
   const st = document.getElementById('eew-demo-status');
   if (st) st.textContent = '停止しました';
 }
@@ -4967,13 +5022,14 @@ function _clearDetectorEvent(id) {
 
 // ===== 強震モニタ/海底地震計 描画トグル =====
 let _kyoshinVisible = true; // デフォルトON
-let _dstenVisible   = false;
+let _dstenVisible   = true; // デフォルトON
 
 function _setToggleUI(thumbId, bgId, on) {
   const thumb = document.getElementById(thumbId);
   const bg    = document.getElementById(bgId);
   if (!thumb || !bg) return;
   thumb.style.left = on ? '18px' : '2px';
+  thumb.style.background = on ? '#fff' : '#888';
   bg.style.background = on ? '#4af' : '#333';
   bg.style.borderColor = on ? '#39d' : '#444';
 }
@@ -5543,6 +5599,182 @@ window._kyoshinAutoStart = true;
   }
 })();
 
+// ===== 通知音エンジン (Scratch sprite3から変換) =====
+// Scratch: Instrument 6 = Marimba, BPM=60（Scratchデフォルト）→ 1beat=1s
+// MIDI note: freq = 440 * 2^((note-69)/12)
+
+(function() {
+  let _audioCtx = null;
+  let _soundEnabled = true;
+  let _soundVolume = 0.70;
+
+  // Scratch楽器6番（マリンバ）に近いWeb Audio合成
+  // マリンバ: 基音 + 倍音 + 短めのエンベロープ
+  function _midiToFreq(note) {
+    return 440 * Math.pow(2, (note - 69) / 12);
+  }
+
+  function _playNote(freq, startTime, duration, ctx, masterGain) {
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const osc3 = ctx.createOscillator();
+    const envGain = ctx.createGain();
+
+    osc1.type = 'sine';   osc1.frequency.value = freq;
+    osc2.type = 'sine';   osc2.frequency.value = freq * 4;   // 4倍音（マリンバ特有）
+    osc3.type = 'sine';   osc3.frequency.value = freq * 10;  // 高次倍音
+
+    const mix = ctx.createGain();
+    const g1 = ctx.createGain(); g1.gain.value = 1.0;
+    const g2 = ctx.createGain(); g2.gain.value = 0.35;
+    const g3 = ctx.createGain(); g3.gain.value = 0.06;
+
+    osc1.connect(g1); osc2.connect(g2); osc3.connect(g3);
+    g1.connect(mix); g2.connect(mix); g3.connect(mix);
+    mix.connect(envGain);
+    envGain.connect(masterGain);
+
+    // マリンバ風エンベロープ: 短アタック, 素早い減衰
+    const att = 0.005;
+    const decayEnd = startTime + Math.min(duration * 0.8, 0.4);
+    envGain.gain.setValueAtTime(0, startTime);
+    envGain.gain.linearRampToValueAtTime(1.0, startTime + att);
+    envGain.gain.exponentialRampToValueAtTime(0.001, decayEnd + duration * 0.5);
+
+    osc1.start(startTime); osc2.start(startTime); osc3.start(startTime);
+    const endTime = decayEnd + duration * 0.5 + 0.05;
+    osc1.stop(endTime); osc2.stop(endTime); osc3.stop(endTime);
+  }
+
+  // Scratch デフォルトBPM=60 → 1 beat = 1.0s
+  const BEAT = 0.9;
+
+  // 各サウンド定義（Scratchから変換）
+  // note: MIDI番号, beats: 拍数
+  const SOUNDS = {
+    // 地震情報: 65(F5) 60(C5)
+    quake: [
+      { note:65, beats:0.17 },
+      { note:60, beats:0.17 },
+    ],
+    // 震度速報: 65 62 69
+    scalePrompt: [
+      { note:65, beats:0.16 },
+      { note:62, beats:0.18 },
+      { note:69, beats:0.25 },
+    ],
+    // 震源情報: 67 65 60
+    hypocenter: [
+      { note:67, beats:0.17 },
+      { note:65, beats:0.17 },
+      { note:60, beats:0.25 },
+    ],
+    // 緊急地震（予報）: 60 69 62 64
+    eewForecast: [
+      { note:60, beats:0.17 },
+      { note:69, beats:0.17 },
+      { note:62, beats:0.17 },
+      { note:64, beats:0.17 },
+    ],
+    // 緊急地震（警報）: repeat2 { repeat2 { 59 64 67 71 72 rest0.25 } rest0.25 }
+    eewWarn: (function() {
+      const inner = [
+        { note:59, beats:0.1 },
+        { note:64, beats:0.1 },
+        { note:67, beats:0.1 },
+        { note:71, beats:0.1 },
+        { note:72, beats:0.1 },
+        { note:null, beats:0.25 }, // rest
+      ];
+      const outer = [...inner, ...inner, { note:null, beats:0.25 }];
+      return [...outer, ...outer];
+    })(),
+    // 緊急地震（キャンセル）: 69 60
+    eewCancel: [
+      { note:69, beats:0.17 },
+      { note:60, beats:0.17 },
+    ],
+  };
+
+  function _getOrCreateCtx() {
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    return _audioCtx;
+  }
+
+  window.playSound = function(type) {
+    if (!_soundEnabled && type !== '__force__') return;
+    const seq = SOUNDS[type];
+    if (!seq) return;
+    try {
+      const ctx = _getOrCreateCtx();
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = _soundVolume;
+      masterGain.connect(ctx.destination);
+      let t = ctx.currentTime + 0.05;
+      seq.forEach(({ note, beats }) => {
+        const dur = beats * BEAT;
+        if (note !== null) _playNote(_midiToFreq(note), t, dur, ctx, masterGain);
+        t += dur;
+      });
+    } catch(e) {
+      console.warn('[Sound] 再生失敗:', e);
+    }
+  };
+
+  window.onSoundEnabledToggle = function() {
+    _soundEnabled = !_soundEnabled;
+    const tog = document.getElementById('sound-enabled-toggle');
+    const thb = document.getElementById('sound-enabled-thumb');
+    if (tog) { tog.style.background = _soundEnabled ? '#4af' : '#333'; tog.style.borderColor = _soundEnabled ? '#39d' : '#444'; }
+    if (thb) { thb.style.left = _soundEnabled ? '18px' : '2px'; thb.style.background = _soundEnabled ? '#fff' : '#888'; }
+    // AudioContext はユーザー操作後に作成
+    if (_soundEnabled) _getOrCreateCtx();
+  };
+
+  window.onSoundVolumeChange = function(val) {
+    _soundVolume = val / 100;
+    const lbl = document.getElementById('sound-volume-label');
+    if (lbl) lbl.textContent = val + '%';
+  };
+
+  // AudioContext を最初のユーザー操作でアンロックしておく
+  function _unlock() {
+    try { _getOrCreateCtx(); } catch(e) {}
+    document.removeEventListener('touchstart', _unlock);
+    document.removeEventListener('mousedown',  _unlock);
+  }
+  document.addEventListener('touchstart', _unlock, { once: true });
+  document.addEventListener('mousedown',  _unlock, { once: true });
+
+  // ===== 既存イベント処理へのフック =====
+  // 551イベント（地震情報）受信時に音を鳴らす
+  const _origProcessEvent = window.processNewEvent;
+  // processNewEvent が定義されているか確認し、フック
+  // 代わりに renderEventList をフックしてイベントタイプを検出する
+  // → WebSocket onmessage の直後にフックするほうが確実なので
+  //    グローバルフック用関数を定義してWS側から呼ばせる
+  window._notifySoundForEvent = function(ev) {
+    if (!_soundEnabled) return;
+    if (!ev || ev.code !== 551) return;
+    const type = (window.getEventType && window.getEventType(ev)) || 'quake';
+    if (type === 'scalePrompt') playSound('scalePrompt');
+    else if (type === 'hypocenter') playSound('hypocenter');
+    else playSound('quake');
+  };
+
+  window._notifySoundForEew = function(eew) {
+    if (!_soundEnabled) return;
+    if (!eew) return;
+    if (eew.isCancel) { playSound('eewCancel'); return; }
+    if (eew.isWarn)   { playSound('eewWarn');   return; }
+    playSound('eewForecast');
+  };
+
+})();
+
 </script>
 <script src="eq_detector.js"></script>
 <script>
@@ -5551,6 +5783,9 @@ if (window._kyoshinAutoStart) {
   _setToggleUI('kyoshin-visible-thumb', 'kyoshin-visible-toggle', true);
   startKyoshinWS();
 }
+// 海底地震計もデフォルトON
+_setToggleUI('dsten-visible-thumb', 'dsten-visible-toggle', true);
+startDstenWS();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
