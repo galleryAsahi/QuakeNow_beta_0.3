@@ -3,6 +3,17 @@
   "description": "顕著な地震の震源要素更新のお知らせ（VXSE61）記録ファイル",
   "events": [
     {
+      "arrivalTime": "2026/06/16 19:46",
+      "reportDateTime": "2026/06/16 21:45",
+      "hypocenter": {
+        "name": "茨城県南部",
+        "latitude": 36.1,
+        "longitude": 139.9,
+        "depth": 50,
+        "magnitude": 5.5
+      }
+    },
+    {
       "arrivalTime": "2026/05/20 11:46",
       "reportDateTime": "2026/05/20 13:30",
       "hypocenter": {
