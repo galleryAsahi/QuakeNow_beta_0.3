@@ -3,6 +3,17 @@
   "description": "顕著な地震の震源要素更新のお知らせ（VXSE61）記録ファイル",
   "events": [
     {
+      "arrivalTime": "2026/06/25 07:30",
+      "reportDateTime": "2026/06/25 10:15",
+      "hypocenter": {
+        "name": "岩手県沖",
+        "latitude": 40.2,
+        "longitude": 142.3,
+        "depth": 40,
+        "magnitude": 7.2
+      }
+    },
+    {
       "arrivalTime": "2026/06/16 19:46",
       "reportDateTime": "2026/06/16 21:45",
       "hypocenter": {
