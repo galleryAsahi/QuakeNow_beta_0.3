@@ -3,6 +3,17 @@
   "description": "顕著な地震の震源要素更新のお知らせ（VXSE61）記録ファイル",
   "events": [
     {
+      "arrivalTime": "2026/06/26 22:29",
+      "reportDateTime": "2026/06/27 00:40",
+      "hypocenter": {
+        "name": "山梨県東部・富士五湖",
+        "latitude": 35.6,
+        "longitude": 139,
+        "depth": 20,
+        "magnitude": 5.6
+      }
+    },
+    {
       "arrivalTime": "2026/06/25 07:30",
       "reportDateTime": "2026/06/25 10:15",
       "hypocenter": {
